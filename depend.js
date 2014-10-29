@@ -6,10 +6,10 @@ var defConst = function(obj,prop,val){
  });
 };
 
-defConst(window,      "_libs", {});
-defConst(window._libs,"depend",{});
 
-var libObj = window._libs.depend;
+var _libs = {};
+defConst(_libs,"depend",{});
+var libObj = _libs.depend;
 
 defConst(libObj,"codez",{});
 defConst(libObj,"loaded",[]);
@@ -19,7 +19,7 @@ defConst(libObj,"sources",{});
 defConst(libObj,"return",{});
 
 var run = function(id){
- var thisObj = {};
+ var thisObj = libObj.codez[id].thisObj;
  var index;
  libObj.return[id] = libObj.codez[id].call(thisObj);
  index=libObj.pending.indexOf(id)
@@ -27,13 +27,13 @@ var run = function(id){
   libObj.pending.splice(index,1);
   libObj.loaded.push(id);
  }
- defConst(window._libs,id,thisObj);
  
  var i;
  for(req_id in libObj.required){
   i = -1;
   index = libObj.required[req_id].indexOf(id);
   if(index+1){
+   libObj.codez[req_id].thisObj[id] = libObj.return[id];
    libObj.required[req_id].splice(index,1);
    if(libObj.required[req_id].length==0){
     run(req_id);
@@ -59,6 +59,7 @@ var load = function(id,req,f,isLib){
   libObj.pending.push(id);
  }
  libObj.codez[id] = f;
+ libObj.codez[id].thisObj = {};
  
  libObj.required[id] = [];
  var i = -1;
@@ -85,10 +86,30 @@ var load = function(id,req,f,isLib){
 
 window.Library = function(id,req,f){
  load(id,req,f,true);
-}
+};
 
-window.Script = function(id,req,f){
+window.Script = function(req,f){
+ var id;
+ while( !id || libObj.codez[id] ){
+  id = "script_"+Math.random();
+ }
  load(id,req,f,false);
+};
+
+Library.load = Script.load = function(url){
+ var node;
+ node = document.createElement("script");
+ node.setAttribute("src", (url.substr(-3)==".js")?(url):(url+".js") );
+ node.setAttribute("async","");
+ node.setAttribute("data-sudden-death","");
+ node.addEventListener("load",
+  function(e){e.target.parentNode.removeChild(e.target);}
+ );
+ document.head.appendChild(node);
+};
+
+Library.register = function(id, url){
+ libObj.sources[id] = url;
 };
 
 })();
